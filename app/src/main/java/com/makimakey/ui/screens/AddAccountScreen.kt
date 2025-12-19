@@ -2,6 +2,7 @@ package com.makimakey.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -9,6 +10,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.makimakey.crypto.Base32Decoder
@@ -61,7 +63,8 @@ fun AddAccountScreen(
                 label = { Text("Issuer (Optional)") },
                 placeholder = { Text("Google, GitHub, etc.") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp)
             )
 
             OutlinedTextField(
@@ -71,7 +74,8 @@ fun AddAccountScreen(
                 placeholder = { Text("user@example.com") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                isError = accountName.isBlank() && errorMessage != null
+                isError = accountName.isBlank() && errorMessage != null,
+                shape = RoundedCornerShape(16.dp)
             )
 
             OutlinedTextField(
@@ -80,7 +84,8 @@ fun AddAccountScreen(
                 label = { Text("Secret Key") },
                 placeholder = { Text("BASE32 ENCODED SECRET") },
                 modifier = Modifier.fillMaxWidth(),
-                isError = !Base32Decoder.isValid(secret) && secret.isNotBlank()
+                isError = !Base32Decoder.isValid(secret) && secret.isNotBlank(),
+                shape = RoundedCornerShape(16.dp)
             )
 
             if (!Base32Decoder.isValid(secret) && secret.isNotBlank()) {
@@ -128,7 +133,8 @@ fun AddAccountScreen(
                     label = { Text("Digits") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp)
                 )
 
                 OutlinedTextField(
@@ -137,7 +143,8 @@ fun AddAccountScreen(
                     label = { Text("Period (seconds)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp)
                 )
             }
 
@@ -163,9 +170,21 @@ fun AddAccountScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 8.dp
+                )
             ) {
-                Text("Add Account")
+                Text(
+                    "Add Account",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
             }
         }
     }

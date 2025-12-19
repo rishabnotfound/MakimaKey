@@ -35,7 +35,8 @@ class SecureStorage(context: Context) {
         private const val KEY_ACCOUNTS = "accounts"
         private const val KEY_APP_LOCK_ENABLED = "app_lock_enabled"
         private const val KEY_PIN_HASH = "pin_hash"
-        private const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
+        private const val KEY_SECURITY_QUESTION = "security_question"
+        private const val KEY_SECURITY_ANSWER_HASH = "security_answer_hash"
     }
 
     /**
@@ -168,13 +169,23 @@ class SecureStorage(context: Context) {
             .apply()
     }
 
-    fun isBiometricEnabled(): Boolean {
-        return sharedPreferences.getBoolean(KEY_BIOMETRIC_ENABLED, false)
+    fun getSecurityQuestion(): String? {
+        return sharedPreferences.getString(KEY_SECURITY_QUESTION, null)
     }
 
-    fun setBiometricEnabled(enabled: Boolean) {
+    fun setSecurityQuestion(question: String) {
         sharedPreferences.edit()
-            .putBoolean(KEY_BIOMETRIC_ENABLED, enabled)
+            .putString(KEY_SECURITY_QUESTION, question)
+            .apply()
+    }
+
+    fun getSecurityAnswerHash(): String? {
+        return sharedPreferences.getString(KEY_SECURITY_ANSWER_HASH, null)
+    }
+
+    fun setSecurityAnswerHash(hash: String) {
+        sharedPreferences.edit()
+            .putString(KEY_SECURITY_ANSWER_HASH, hash)
             .apply()
     }
 

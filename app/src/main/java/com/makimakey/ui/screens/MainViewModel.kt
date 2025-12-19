@@ -4,8 +4,10 @@ import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.makimakey.backup.BackupManager
 import com.makimakey.crypto.EncryptionManager
 import com.makimakey.crypto.TotpGenerator
 import com.makimakey.domain.model.TotpAccount
@@ -27,6 +29,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val encryptionManager = EncryptionManager()
     private val repository = TotpRepository(secureStorage, encryptionManager)
     val appLockManager = AppLockManager(application, secureStorage)
+    val backupManager = BackupManager(application, secureStorage)
 
     val accounts: StateFlow<List<TotpAccount>> = repository.accounts
 
@@ -94,17 +97,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _remainingSeconds.value = remaining
     }
 
-    fun addAccountFromQr(qrContent: String) {
-        viewModelScope.launch {
-            try {
-                val otpAuthData = OtpAuthParser.parse(qrContent)
-                val result = repository.addAccount(otpAuthData)
-                if (result.isFailure) {
-                    _error.value = "Failed to add account: ${result.exceptionOrNull()?.message}"
-                }
-            } catch (e: Exception) {
-                _error.value = "Invalid QR code: ${e.message}"
+    suspend fun addAccountFromQr(qrContent: String): Boolean {
+        return try {
+            val otpAuthData = OtpAuthParser.parse(qrContent)
+            val result = repository.addAccount(otpAuthData)
+            if (result.isFailure) {
+                _error.value = "Failed to add account: ${result.exceptionOrNull()?.message}"
+                false
+            } else {
+                true
             }
+        } catch (e: Exception) {
+            _error.value = "Invalid QR code: ${e.message}"
+            false
         }
     }
 
@@ -174,6 +179,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearError() {
         _error.value = null
+    }
+
+    suspend fun exportBackup(uri: Uri): Boolean {
+        return try {
+            val outputStream = getApplication<Application>().contentResolver.openOutputStream(uri)
+            if (outputStream != null) {
+                val result = backupManager.exportBackup(outputStream)
+                result.isSuccess
+            } else {
+                _error.value = "Failed to create backup file"
+                false
+            }
+        } catch (e: Exception) {
+            _error.value = "Export failed: ${e.message}"
+            false
+        }
+    }
+
+    suspend fun importBackup(uri: Uri): Boolean {
+        return try {
+            val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
+            if (inputStream != null) {
+                val result = backupManager.importBackup(inputStream)
+                if (result.isSuccess) {
+                    loadAccounts()
+                    val count = result.getOrNull() ?: 0
+                    _error.value = if (count > 0) {
+                        "Imported $count account(s) successfully"
+                    } else {
+                        "No new accounts to import"
+                    }
+                    true
+                } else {
+                    _error.value = "Import failed: ${result.exceptionOrNull()?.message}"
+                    false
+                }
+            } else {
+                _error.value = "Failed to read backup file"
+                false
+            }
+        } catch (e: Exception) {
+            _error.value = "Import failed: ${e.message}"
+            false
+        }
     }
 
     override fun onCleared() {

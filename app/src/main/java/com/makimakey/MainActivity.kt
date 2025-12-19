@@ -1,11 +1,14 @@
 package com.makimakey
 
+import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -17,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import com.makimakey.ui.screens.*
 import com.makimakey.ui.theme.MakimaKeyTheme
 import com.makimakey.ui.theme.TrueBlack
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +58,7 @@ class MainActivity : ComponentActivity() {
 fun MakimaKeyApp() {
     val navController = rememberNavController()
     val viewModel: MainViewModel = viewModel()
+    val scope = rememberCoroutineScope()
 
     val accounts by viewModel.accounts.collectAsState()
     val currentCodes by viewModel.currentCodes.collectAsState()
@@ -63,6 +68,34 @@ fun MakimaKeyApp() {
 
     var isUnlocked by remember { mutableStateOf(!viewModel.appLockManager.isPinSet()) }
     var showPinSetup by remember { mutableStateOf(false) }
+    var showForgotPin by remember { mutableStateOf(false) }
+
+    val exportBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                val success = viewModel.exportBackup(it)
+                if (success) {
+                    Toast.makeText(
+                        navController.context,
+                        "Backup exported successfully",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    val importBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                viewModel.importBackup(it)
+            }
+        }
+    }
 
     error?.let { errorMsg ->
         LaunchedEffect(errorMsg) {
@@ -75,19 +108,34 @@ fun MakimaKeyApp() {
         }
     }
 
-    if (!isUnlocked && viewModel.appLockManager.isPinSet()) {
+    if (showForgotPin) {
+        ForgotPinScreen(
+            appLockManager = viewModel.appLockManager,
+            onBackClick = { showForgotPin = false },
+            onPinReset = {
+                Toast.makeText(
+                    navController.context,
+                    "PIN reset successfully",
+                    Toast.LENGTH_SHORT
+                ).show()
+                showForgotPin = false
+                isUnlocked = true
+            }
+        )
+    } else if (!isUnlocked && viewModel.appLockManager.isPinSet()) {
         PinLockScreen(
             appLockManager = viewModel.appLockManager,
             onUnlocked = { isUnlocked = true },
-            onSetupPin = {},
+            onSetupPin = { _, _, _ -> },
+            onForgotPin = { showForgotPin = true },
             isSetup = false
         )
     } else if (showPinSetup) {
         PinLockScreen(
             appLockManager = viewModel.appLockManager,
             onUnlocked = { showPinSetup = false },
-            onSetupPin = { pin ->
-                viewModel.appLockManager.setupPin(pin)
+            onSetupPin = { pin, securityQuestion, securityAnswer ->
+                viewModel.appLockManager.setupPin(pin, securityQuestion, securityAnswer)
                 showPinSetup = false
             },
             isSetup = true
@@ -135,10 +183,27 @@ fun MakimaKeyApp() {
             }
 
             composable("qr_scan") {
+                val scope = rememberCoroutineScope()
+                var isProcessing by remember { mutableStateOf(false) }
+
                 QrScannerScreen(
                     onQrScanned = { qrContent ->
-                        viewModel.addAccountFromQr(qrContent)
-                        navController.popBackStack()
+                        if (!isProcessing) {
+                            isProcessing = true
+                            scope.launch {
+                                val success = viewModel.addAccountFromQr(qrContent)
+                                if (success) {
+                                    Toast.makeText(
+                                        navController.context,
+                                        "Account added successfully",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    navController.popBackStack()
+                                } else {
+                                    isProcessing = false
+                                }
+                            }
+                        }
                     },
                     onBackClick = { navController.popBackStack() }
                 )
@@ -150,6 +215,12 @@ fun MakimaKeyApp() {
                     onBackClick = { navController.popBackStack() },
                     onSetupPinClick = {
                         showPinSetup = true
+                    },
+                    onExportBackup = {
+                        exportBackupLauncher.launch(viewModel.backupManager.generateBackupFileName())
+                    },
+                    onImportBackup = {
+                        importBackupLauncher.launch(arrayOf("application/json", "*/*"))
                     }
                 )
             }

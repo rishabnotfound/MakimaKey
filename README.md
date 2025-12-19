@@ -1,4 +1,12 @@
-# MakimaKey
+<p align="center">
+      <img
+        src="./logo/logo.png"
+        width="200"
+        height="200"
+      />
+    </p>
+
+# <p align="center">MakimaKey</p>
 
 A secure, fully offline, open-source TOTP authenticator for Android.
 
@@ -210,7 +218,7 @@ Contributions are welcome! Please:
 
 ## License
 
-MIT - see LICENSE file
+[MIT](LICENSE) - see LICENSE file
 
 ## Acknowledgments
 

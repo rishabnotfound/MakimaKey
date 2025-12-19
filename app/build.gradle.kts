@@ -78,7 +78,6 @@ dependencies {
 
     // Security
     implementation(libs.androidx.security.crypto)
-    implementation(libs.androidx.biometric)
 
     // CameraX for QR scanning
     implementation(libs.androidx.camera.core)

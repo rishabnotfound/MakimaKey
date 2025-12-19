@@ -1,19 +1,15 @@
 package com.makimakey.security
 
 import android.content.Context
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricPrompt
-import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
 import com.makimakey.storage.SecureStorage
 import java.security.MessageDigest
 
 /**
- * Manages app lock with PIN and biometric authentication
+ * Manages app lock with PIN authentication
  */
 class AppLockManager(
     private val context: Context,
-    private val secureStorage: SecureStorage
+    val secureStorage: SecureStorage
 ) {
     private var isUnlocked = false
     private var lastUnlockTime = 0L
@@ -55,14 +51,20 @@ class AppLockManager(
     }
 
     /**
-     * Sets up PIN authentication
+     * Sets up PIN authentication with security question
      */
-    fun setupPin(pin: String) {
+    fun setupPin(pin: String, securityQuestion: String, securityAnswer: String) {
         require(pin.length >= 4) { "PIN must be at least 4 digits" }
         require(pin.all { it.isDigit() }) { "PIN must contain only digits" }
+        require(securityQuestion.isNotBlank()) { "Security question is required" }
+        require(securityAnswer.isNotBlank()) { "Security answer is required" }
 
-        val hash = hashPin(pin)
-        secureStorage.setPinHash(hash)
+        val pinHash = hashPin(pin)
+        val answerHash = hashAnswer(securityAnswer)
+
+        secureStorage.setPinHash(pinHash)
+        secureStorage.setSecurityQuestion(securityQuestion)
+        secureStorage.setSecurityAnswerHash(answerHash)
         secureStorage.setAppLockEnabled(true)
     }
 
@@ -88,7 +90,6 @@ class AppLockManager(
     fun removePin() {
         secureStorage.setPinHash("")
         secureStorage.setAppLockEnabled(false)
-        secureStorage.setBiometricEnabled(false)
     }
 
     /**
@@ -102,78 +103,39 @@ class AppLockManager(
     }
 
     /**
-     * Checks if biometric authentication is available
+     * Hashes a security answer using SHA-256
      */
-    fun isBiometricAvailable(): Boolean {
-        val biometricManager = BiometricManager.from(context)
-        return when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)) {
-            BiometricManager.BIOMETRIC_SUCCESS -> true
-            else -> false
+    private fun hashAnswer(answer: String): String {
+        val normalizedAnswer = answer.trim().lowercase()
+        val saltedAnswer = "${SALT}_ANSWER_$normalizedAnswer"
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hash = digest.digest(saltedAnswer.toByteArray())
+        return hash.joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Verifies a security answer
+     */
+    fun verifySecurityAnswer(answer: String): Boolean {
+        val storedHash = secureStorage.getSecurityAnswerHash() ?: return false
+        val inputHash = hashAnswer(answer)
+        return storedHash == inputHash
+    }
+
+    /**
+     * Resets PIN using security answer
+     */
+    fun resetPinWithSecurityAnswer(answer: String, newPin: String): Boolean {
+        if (!verifySecurityAnswer(answer)) {
+            return false
         }
-    }
 
-    /**
-     * Checks if biometric is enabled
-     */
-    fun isBiometricEnabled(): Boolean {
-        return secureStorage.isBiometricEnabled() && isBiometricAvailable()
-    }
+        require(newPin.length >= 4) { "PIN must be at least 4 digits" }
+        require(newPin.all { it.isDigit() }) { "PIN must contain only digits" }
 
-    /**
-     * Enables biometric authentication
-     */
-    fun enableBiometric() {
-        require(isBiometricAvailable()) { "Biometric authentication not available" }
-        require(isPinSet()) { "PIN must be set before enabling biometric" }
-        secureStorage.setBiometricEnabled(true)
-    }
-
-    /**
-     * Disables biometric authentication
-     */
-    fun disableBiometric() {
-        secureStorage.setBiometricEnabled(false)
-    }
-
-    /**
-     * Shows biometric prompt
-     */
-    fun showBiometricPrompt(
-        activity: FragmentActivity,
-        onSuccess: () -> Unit,
-        onError: (String) -> Unit
-    ) {
-        val executor = ContextCompat.getMainExecutor(activity)
-        val biometricPrompt = BiometricPrompt(
-            activity,
-            executor,
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    super.onAuthenticationSucceeded(result)
-                    unlock()
-                    onSuccess()
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    super.onAuthenticationError(errorCode, errString)
-                    onError(errString.toString())
-                }
-
-                override fun onAuthenticationFailed() {
-                    super.onAuthenticationFailed()
-                    onError("Authentication failed")
-                }
-            }
-        )
-
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Unlock MakimaKey")
-            .setSubtitle("Authenticate to access your accounts")
-            .setNegativeButtonText("Use PIN")
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-            .build()
-
-        biometricPrompt.authenticate(promptInfo)
+        val pinHash = hashPin(newPin)
+        secureStorage.setPinHash(pinHash)
+        return true
     }
 
     /**
