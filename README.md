@@ -10,6 +10,13 @@
 
 A secure, fully offline, open-source TOTP authenticator for Android.
 
+## Preview
+
+<p align="center">
+    <img width="379" height="849" alt="image" src="https://github.com/user-attachments/assets/a407ffb8-ff61-4a3e-8296-d96b8d0a237d" />
+      <img width="376" height="843" alt="image" src="https://github.com/user-attachments/assets/575056f2-ce6f-486d-8040-78b522e5f001" />
+</p
+
 ## Features
 
 ### Security First
