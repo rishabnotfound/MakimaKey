@@ -29,7 +29,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val encryptionManager = EncryptionManager()
     private val repository = TotpRepository(secureStorage, encryptionManager)
     val appLockManager = AppLockManager(application, secureStorage)
-    val backupManager = BackupManager(application, secureStorage)
+    val backupManager = BackupManager(application, secureStorage, encryptionManager)
 
     val accounts: StateFlow<List<TotpAccount>> = repository.accounts
 

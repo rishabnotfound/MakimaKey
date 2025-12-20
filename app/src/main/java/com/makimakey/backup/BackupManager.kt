@@ -2,6 +2,8 @@ package com.makimakey.backup
 
 import android.content.Context
 import android.net.Uri
+import android.util.Base64
+import com.makimakey.crypto.EncryptionManager
 import com.makimakey.storage.SecureStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,11 +19,13 @@ import java.util.*
  */
 class BackupManager(
     private val context: Context,
-    private val secureStorage: SecureStorage
+    private val secureStorage: SecureStorage,
+    private val encryptionManager: EncryptionManager
 ) {
 
     /**
      * Exports all accounts to a backup file
+     * Decrypts secrets before exporting so they can be re-encrypted on import
      */
     suspend fun exportBackup(outputStream: OutputStream): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -33,11 +37,20 @@ class BackupManager(
 
                 val accountsArray = JSONArray()
                 accounts.forEach { account ->
+                    // Decrypt the secret so it can be re-encrypted on import
+                    val decryptedSecret = try {
+                        encryptionManager.decrypt(account.encryptedSecret)
+                    } catch (e: Exception) {
+                        // If decryption fails, skip this account
+                        return@forEach
+                    }
+
                     accountsArray.put(JSONObject().apply {
                         put("id", account.id)
                         put("issuer", account.issuer)
                         put("accountName", account.accountName)
-                        put("encryptedSecret", account.encryptedSecret)
+                        // Store decrypted secret as Base64 in the backup
+                        put("secret", Base64.encodeToString(decryptedSecret, Base64.NO_WRAP))
                         put("algorithm", account.algorithm.value)
                         put("digits", account.digits)
                         put("period", account.period)
@@ -60,6 +73,7 @@ class BackupManager(
 
     /**
      * Imports accounts from a backup file
+     * Re-encrypts secrets with the current keystore
      */
     suspend fun importBackup(inputStream: InputStream): Result<Int> = withContext(Dispatchers.IO) {
         try {
@@ -86,12 +100,17 @@ class BackupManager(
                     continue
                 }
 
+                // Get the decrypted secret from backup and re-encrypt it with current keystore
+                val secretBase64 = accountJson.getString("secret")
+                val decryptedSecret = Base64.decode(secretBase64, Base64.NO_WRAP)
+                val encryptedSecret = encryptionManager.encrypt(decryptedSecret)
+
                 currentAccounts.add(
                     com.makimakey.domain.model.TotpAccount(
                         id = accountId,
                         issuer = accountJson.optString("issuer", ""),
                         accountName = accountJson.getString("accountName"),
-                        encryptedSecret = accountJson.getString("encryptedSecret"),
+                        encryptedSecret = encryptedSecret,
                         algorithm = com.makimakey.crypto.TotpGenerator.Algorithm.fromString(
                             accountJson.optString("algorithm", "SHA1")
                         ),
