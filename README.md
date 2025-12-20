@@ -8,7 +8,30 @@
 
 # <p align="center">MakimaKey</p>
 
-A secure, fully offline, open-source TOTP authenticator for Android.
+<p align="center">A secure, fully offline, open-source TOTP authenticator for Android.</p>
+
+## Download
+
+<p align="center">
+  <img alt="GitHub Downloads" src="https://img.shields.io/github/downloads/rishabnotfound/MakimaKey/total">
+</p>
+
+<p align="center">
+  <a href="https://github.com/rishabnotfound/MakimaKey/releases/latest">
+    <img
+      src="https://custom-icon-badges.demolab.com/badge/Download%20APK-blue?style=for-the-badge&logo=download&logoColor=white"
+      alt="Download APK"
+    />
+  </a>
+</p>
+
+<p align="center">
+  <sub>
+    Not sure which build to choose? Download the <b>Universal</b> version.
+  </sub>
+</p>
+
+
 
 ## Preview
 
@@ -241,3 +264,12 @@ This is an open-source project maintained by volunteers. For issues and feature 
 ## Disclaimer
 
 This software is provided "as is" without warranty. Use at your own risk. Always keep backup codes from your service providers.
+
+## Author
+
+**R** (rishabnotfound)
+
+---
+
+Made with ❤️ by R
+
