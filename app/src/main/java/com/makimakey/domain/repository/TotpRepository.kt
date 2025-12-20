@@ -95,6 +95,14 @@ class TotpRepository(
     }
 
     /**
+     * Updates an existing account
+     */
+    suspend fun updateAccount(account: TotpAccount) {
+        secureStorage.updateAccount(account)
+        loadAccounts()
+    }
+
+    /**
      * Reorders accounts
      */
     suspend fun reorderAccounts(accountIds: List<String>) {

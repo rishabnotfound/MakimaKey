@@ -1,7 +1,8 @@
 package com.makimakey.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,6 +30,7 @@ fun HomeScreen(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onAccountClick: (TotpAccount, String) -> Unit,
+    onAccountEdit: (TotpAccount, String, String) -> Unit,
     onAddClick: () -> Unit,
     onQrScanClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -125,8 +127,14 @@ fun HomeScreen(
                         account = account,
                         code = currentCodes[account.id] ?: "------",
                         remainingSeconds = remainingSeconds[account.id] ?: 0,
-                        onAccountClick = { code ->
+                        onAccountLongClick = { code ->
                             onAccountClick(account, code)
+                        },
+                        onAccountClick = {
+                            // Will open edit dialog
+                        },
+                        onAccountEdit = { issuer, accountName ->
+                            onAccountEdit(account, issuer, accountName)
                         },
                         onDeleteClick = {
                             onDeleteAccount(account.id)
@@ -172,21 +180,31 @@ fun SearchAppBar(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AccountItem(
     account: TotpAccount,
     code: String,
     remainingSeconds: Int,
-    onAccountClick: (String) -> Unit,
+    onAccountClick: () -> Unit,
+    onAccountLongClick: (String) -> Unit,
+    onAccountEdit: (String, String) -> Unit,
     onDeleteClick: () -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onAccountClick(code) },
+            .combinedClickable(
+                onClick = {
+                    showEditDialog = true
+                    onAccountClick()
+                },
+                onLongClick = { onAccountLongClick(code) }
+            ),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
@@ -320,6 +338,16 @@ fun AccountItem(
             },
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(24.dp)
+        )
+    }
+
+    if (showEditDialog) {
+        EditAccountDialog(
+            account = account,
+            onDismiss = { showEditDialog = false },
+            onSave = { issuer, accountName ->
+                onAccountEdit(issuer, accountName)
+            }
         )
     }
 }

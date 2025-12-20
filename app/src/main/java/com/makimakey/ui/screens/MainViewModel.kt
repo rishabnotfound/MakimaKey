@@ -150,6 +150,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateAccountDetails(accountId: String, newIssuer: String, newAccountName: String) {
+        viewModelScope.launch {
+            try {
+                val account = accounts.value.find { it.id == accountId }
+                if (account != null) {
+                    val updatedAccount = account.copy(
+                        issuer = newIssuer,
+                        accountName = newAccountName
+                    )
+                    repository.updateAccount(updatedAccount)
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to update account: ${e.message}"
+            }
+        }
+    }
+
     fun copyToClipboard(code: String) {
         val clipboard = getApplication<Application>().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("TOTP Code", code)

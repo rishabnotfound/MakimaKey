@@ -160,6 +160,9 @@ fun MakimaKeyApp() {
                             Toast.LENGTH_SHORT
                         ).show()
                     },
+                    onAccountEdit = { account, issuer, accountName ->
+                        viewModel.updateAccountDetails(account.id, issuer, accountName)
+                    },
                     onAddClick = {
                         navController.navigate("add")
                     },
